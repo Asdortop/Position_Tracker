@@ -65,6 +65,8 @@ API_V1_STR=/api/v1
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
+**Note**: Never commit your `.env` file to version control. Use environment variables or a secure configuration management system for production deployments.
+
 ### 4. Database Setup
 
 The application uses SQLAlchemy with automatic table creation for development. For production, use Alembic migrations:
@@ -330,6 +332,8 @@ services:
 volumes:
   postgres_data:
 ```
+
+**Security Note**: Replace the database credentials with secure values and use environment variables or secrets management in production.
 
 ## 🤝 Contributing
 
