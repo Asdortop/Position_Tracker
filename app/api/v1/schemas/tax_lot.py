@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 from decimal import Decimal
-from app.models.tax_lot import LotStatus
+from app.database.models.tax_lot import LotStatus
 
 class TaxLotBase(BaseModel):
     user_id: int

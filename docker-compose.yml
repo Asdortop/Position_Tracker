@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: position-tracker-postgres
+    environment:
+      POSTGRES_DB: position_tracker
+      POSTGRES_USER: tracker_user
+      POSTGRES_PASSWORD: secure_pass_123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracker_user -d position_tracker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - position-tracker-network
+
+  # Position Tracker API
+  api:
+    build: .
+    container_name: position-tracker-api
+    environment:
+      DATABASE_URL: postgresql+psycopg2://tracker_user:secure_pass_123@postgres:5432/position_tracker
+      DEBUG: "true"
+      LOG_LEVEL: INFO
+      HOST: 0.0.0.0
+      PORT: 8000
+      SECRET_KEY: "3jVOo-q9BIpNAr6tIDrDIhPD3bWsS8GDKDUoTw-VrIk"
+      ALGORITHM: "HS256"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - position-tracker-network
+    restart: unless-stopped
+
+  # Redis (for caching, optional)
+  redis:
+    image: redis:7-alpine
+    container_name: position-tracker-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - position-tracker-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  position-tracker-network:
+    driver: bridge

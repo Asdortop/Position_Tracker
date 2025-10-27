@@ -2,6 +2,14 @@ fastapi
 uvicorn[standard]
 sqlalchemy[asyncio]
 aiosqlite
+asyncpg
+psycopg2-binary
 pydantic
 pydantic-settings
 alembic
+# Additional dependencies for Docker
+gunicorn
+python-multipart
+httpx
+# Optional: for monitoring and health checks
+prometheus-client

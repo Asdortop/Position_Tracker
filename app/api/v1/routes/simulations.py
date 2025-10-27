@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1 import dependencies
 from app.services.processing_service import processing_service
 from app.api.v1.schemas.trade import Trade
-from decimal import Decimal
+from app.api.v1.schemas.price import PriceUpdate
 
 router = APIRouter()
 
@@ -21,17 +21,17 @@ async def simulate_trade_event(
 
 @router.post("/prices", status_code=200)
 async def simulate_price_update(
-    user_id: int = Body(...),
-    security_id: int = Body(...),
-    price: Decimal = Body(...),
+    price_update: PriceUpdate,
     db: AsyncSession = Depends(dependencies.get_db)
 ):
     """
     FAKED ENDPOINT: Simulates receiving a price update from a price feed.
     This updates the unrealized P&L.
     """
-    await processing_service.update_price(db, user_id, security_id, price)
-    return {"message": f"Price for {security_id} updated to {price}."}
+    from app.repositories.crud_operations import crud_ops
+    await crud_ops.upsert_price(db, price_update.security_id, price_update.price)
+    await db.commit()
+    return {"message": f"Price for security {price_update.security_id} updated to {price_update.price}."}
 
 @router.post("/eod-taxes", status_code=200)
 async def simulate_eod_taxes(
@@ -45,7 +45,7 @@ async def simulate_eod_taxes(
     """
     from sqlalchemy.future import select
     from datetime import date
-    from app.models.tax_lot import TaxLot
+    from app.database.models.tax_lot import TaxLot
 
     today = date.today().isoformat()
     res = await db.execute(

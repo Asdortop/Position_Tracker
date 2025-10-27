@@ -1,32 +1,39 @@
-# Stage 1: Build stage with development dependencies
-FROM python:3.10-slim as builder
+# Position Tracker API Dockerfile
+FROM python:3.11-slim
 
-WORKDIR /usr/src/app
+# Set working directory
+WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
 
-# Install poetry
-RUN pip install poetry
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy only dependency files to leverage Docker cache
-COPY pyproject.toml poetry.lock ./
+# Copy requirements first for better caching
+COPY requirements.txt .
 
-# Install project dependencies
-RUN poetry config virtualenvs.create false && poetry install --no-dev --no-interaction --no-ansi
-
-# Stage 2: Final production stage
-FROM python:3.10-slim
-
-WORKDIR /usr/src/app
-
-# Copy virtual env from builder stage
-COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY ./app ./app
+COPY . .
 
-# Expose port and run the application
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
+USER app
+
+# Expose port
 EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
+
+# Run the application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

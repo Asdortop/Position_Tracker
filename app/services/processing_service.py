@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
-from app.crud.crud_operations import crud_ops
-from app.models.tax_lot import TaxLot, LotStatus
+from app.repositories.crud_operations import crud_ops
+from app.database.models.tax_lot import TaxLot, LotStatus
 from app.api.v1.schemas.trade import Trade
 
 class ProcessingService:
@@ -33,6 +33,17 @@ class ProcessingService:
         db.add(new_lot)
 
     async def _process_sell(self, db: AsyncSession, trade: Trade):
+        # Get current market price from price feed
+        current_price = await crud_ops.get_latest_price(db, trade.security_id)
+        if not current_price:
+            raise ValueError(
+                f"No price data found for security {trade.security_id}. "
+                f"Please add a price using POST /api/v1/simulate/prices or buy this security first."
+            )
+        
+        # Use price from trade if provided, otherwise use current market price
+        sell_price = trade.price if trade.price is not None else current_price
+        
         open_lots = await crud_ops.get_open_tax_lots_fifo(db, trade.user_id, trade.security_id)
         quantity_to_sell = trade.quantity
 
@@ -52,10 +63,10 @@ class ProcessingService:
             # Ensure timestamp is timezone-naive for consistency
             timestamp = trade.timestamp.replace(tzinfo=None) if trade.timestamp.tzinfo else trade.timestamp
             lot.close_date = timestamp
-            lot.close_price = trade.price
+            lot.close_price = sell_price
             
             # Calculate gain and taxes with charges applied proportionally
-            gross_gain = (trade.price - lot.open_price) * sell_from_this_lot
+            gross_gain = (sell_price - lot.open_price) * sell_from_this_lot
 
             # Allocate charges per unit
             buy_charge_per_unit = (lot.charges or 0) / lot.open_qty if lot.open_qty else 0

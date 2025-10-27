@@ -3,8 +3,8 @@ from datetime import datetime
 from app.api.v1.schemas.portfolio import PortfolioSnapshot, PortfolioSummary, PortfolioPosition
 from app.core.exceptions import PortfolioNotFound
 from decimal import Decimal
-from app.crud.crud_operations import crud_ops
-from app.models.tax_lot import TaxLot, LotStatus
+from app.repositories.crud_operations import crud_ops
+from app.database.models.tax_lot import TaxLot, LotStatus
 from sqlalchemy.future import select
 
 class PortfolioService:
@@ -37,6 +37,11 @@ class PortfolioService:
             qty = agg["qty"]
             avg_cost = (agg["cost"] / qty) if qty > 0 else Decimal(0)
             price = await crud_ops.get_latest_price(db, sec_id) or Decimal(0)
+            
+            # If no price data, skip this position to avoid showing $0 market value
+            if price == 0:
+                continue
+            
             market_value = price * qty
             unreal = (price - avg_cost) * qty if qty > 0 else Decimal(0)
             positions.append(PortfolioPosition(
@@ -51,23 +56,28 @@ class PortfolioService:
             total_unrealized_pnl += unreal
 
         # Gains YTD from closed lots
-        # Gains YTD now store tax amounts on lots (stcg, ltcg). Compute from lots closed this year
+        from datetime import date
         year = datetime.now().year
-        start_date = f"{year}-01-01"
-        end_date = f"{year}-12-31"
+        start_date = datetime(year, 1, 1)
+        end_date = datetime(year, 12, 31)
         res = await db.execute(
-            select(TaxLot.stcg, TaxLot.ltcg)
-            .where(TaxLot.user_id == user_id, TaxLot.close_date.between(start_date, end_date))
+            select(TaxLot.realized_pnl, TaxLot.stcg, TaxLot.ltcg)
+            .where(
+                TaxLot.user_id == user_id,
+                TaxLot.close_date.isnot(None),
+                TaxLot.close_date.between(start_date, end_date)
+            )
         )
         rows2 = res.all()
-        st = sum((r[0] or Decimal(0)) for r in rows2) if rows2 else Decimal(0)
-        lt = sum((r[1] or Decimal(0)) for r in rows2) if rows2 else Decimal(0)
+        realized_pnl = sum((r[0] or Decimal(0)) for r in rows2) if rows2 else Decimal(0)
+        st = sum((r[1] or Decimal(0)) for r in rows2) if rows2 else Decimal(0)
+        lt = sum((r[2] or Decimal(0)) for r in rows2) if rows2 else Decimal(0)
 
         summary = PortfolioSummary(
             user_id=user_id,
             total_market_value=total_market_value,
             total_unrealized_pnl=total_unrealized_pnl,
-            realized_pnl_ytd=st + lt,
+            realized_pnl_ytd=realized_pnl,
             stcg_ytd=st,
             ltcg_ytd=lt,
             last_updated=datetime.now(),

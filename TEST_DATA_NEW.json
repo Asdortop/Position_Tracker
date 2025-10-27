@@ -1,0 +1,255 @@
+{
+  "description": "Comprehensive Test Data for Position Tracker API",
+  "user_id": 5001,
+  "security_id": 501,
+  
+  "scenario_1_basic_buy": {
+    "title": "Basic Buy Trade",
+    "data": {
+      "user_id": 5001,
+      "security_id": 501,
+      "side": "BUY",
+      "quantity": 100,
+      "price": 150.50,
+      "timestamp": "2024-09-15T10:00:00",
+      "charges": 5.00
+    }
+  },
+
+  "scenario_2_multiple_buys": {
+    "title": "Multiple Buy Trades - FIFO Lot Creation",
+    "trades": [
+      {
+        "user_id": 5001,
+        "security_id": 501,
+        "side": "BUY",
+        "quantity": 200,
+        "price": 145.75,
+        "timestamp": "2024-09-01T09:00:00",
+        "charges": 10.00
+      },
+      {
+        "user_id": 5001,
+        "security_id": 501,
+        "side": "BUY",
+        "quantity": 150,
+        "price": 152.25,
+        "timestamp": "2024-09-10T11:30:00",
+        "charges": 7.50
+      },
+      {
+        "user_id": 5001,
+        "security_id": 501,
+        "side": "BUY",
+        "quantity": 100,
+        "price": 155.00,
+        "timestamp": "2024-09-20T14:15:00",
+        "charges": 5.00
+      }
+    ]
+  },
+
+  "scenario_3_complete_sell": {
+    "title": "Complete Sell - FIFO Processing",
+    "precondition": "After Scenario 2, user has 450 units at average ~150.33",
+    "trades": [
+      {
+        "user_id": 5001,
+        "security_id": 501,
+        "side": "SELL",
+        "quantity": 200,
+        "timestamp": "2024-09-25T10:00:00",
+        "charges": 10.00
+      }
+    ]
+  },
+
+  "scenario_4_partial_sell": {
+    "title": "Partial Sell - Multiple Lots Affected",
+    "precondition": "After Scenario 3, remaining 250 units",
+    "trades": [
+      {
+        "user_id": 5001,
+        "security_id": 501,
+        "side": "SELL",
+        "quantity": 180,
+        "timestamp": "2024-09-30T15:00:00",
+        "charges": 9.00
+      }
+    ]
+  },
+
+  "scenario_5_price_updates": {
+    "title": "Price Feed Updates",
+    "updates": [
+      {
+        "security_id": 501,
+        "price": 160.00
+      },
+      {
+        "security_id": 501,
+        "price": 165.50
+      },
+      {
+        "security_id": 501,
+        "price": 158.75
+      }
+    ]
+  },
+
+  "scenario_6_tax_scenarios": {
+    "title": "Tax Calculation Scenarios",
+    "short_term_sale": {
+      "user_id": 5001,
+      "security_id": 501,
+      "side": "SELL",
+      "quantity": 70,
+      "timestamp": "2024-10-05T09:00:00",
+      "charges": 3.50
+    },
+    "long_term_sale": {
+      "user_id": 5001,
+      "security_id": 501,
+      "side": "SELL",
+      "quantity": 50,
+      "timestamp": "2024-11-15T10:00:00",
+      "charges": 2.50
+    }
+  },
+
+  "scenario_7_another_security": {
+    "title": "Trading Different Security",
+    "trades": [
+      {
+        "user_id": 5001,
+        "security_id": 502,
+        "side": "BUY",
+        "quantity": 300,
+        "price": 75.25,
+        "timestamp": "2024-08-20T08:00:00",
+        "charges": 15.00
+      },
+      {
+        "user_id": 5001,
+        "security_id": 502,
+        "side": "BUY",
+        "quantity": 200,
+        "price": 78.50,
+        "timestamp": "2024-09-15T10:30:00",
+        "charges": 10.00
+      },
+      {
+        "user_id": 5001,
+        "security_id": 502,
+        "side": "SELL",
+        "quantity": 250,
+        "timestamp": "2024-10-20T11:00:00",
+        "charges": 12.50
+      }
+    ]
+  },
+
+  "testing_instructions": {
+    "step_1": "Start Docker: docker-compose up",
+    "step_2": "Open Swagger UI: http://localhost:8000/docs",
+    "step_3": "Set Initial Prices: Use POST /simulate/prices for security 501 and 502",
+    "step_4": "Execute Buys: Use POST /simulate/trades with buy orders",
+    "step_5": "Check Portfolio: GET /api/v1/portfolios/{user_id}/snapshot",
+    "step_6": "View Tax Lots: GET /api/v1/taxlots/?user_id={user_id}",
+    "step_7": "Update Prices: POST /simulate/prices to simulate market changes",
+    "step_8": "Execute Sells: POST /simulate/trades with sell orders",
+    "step_9": "Verify FIFO: Check tax lots to see FIFO processing",
+    "step_10": "Check Final Portfolio: GET /api/v1/portfolios/{user_id}/snapshot"
+  },
+
+  "copy_paste_ready": {
+    "initial_prices": [
+      {
+        "security_id": 501,
+        "price": 150.00
+      },
+      {
+        "security_id": 502,
+        "price": 76.00
+      }
+    ],
+    
+    "sequence_1": [
+      {
+        "user_id": 5001,
+        "security_id": 501,
+        "side": "BUY",
+        "quantity": 200,
+        "price": 145.75,
+        "timestamp": "2024-09-01T09:00:00",
+        "charges": 10.00
+      },
+      {
+        "user_id": 5001,
+        "security_id": 501,
+        "side": "BUY",
+        "quantity": 150,
+        "price": 152.25,
+        "timestamp": "2024-09-10T11:30:00",
+        "charges": 7.50
+      },
+      {
+        "user_id": 5001,
+        "security_id": 501,
+        "side": "BUY",
+        "quantity": 100,
+        "price": 155.00,
+        "timestamp": "2024-09-20T14:15:00",
+        "charges": 5.00
+      }
+    ],
+    
+    "sequence_2": [
+      {
+        "security_id": 501,
+        "price": 165.00
+      }
+    ],
+    
+    "sequence_3": [
+      {
+        "user_id": 5001,
+        "security_id": 501,
+        "side": "SELL",
+        "quantity": 200,
+        "timestamp": "2024-09-25T10:00:00",
+        "charges": 10.00
+      }
+    ],
+    
+    "sequence_4": [
+      {
+        "user_id": 5001,
+        "security_id": 502,
+        "side": "BUY",
+        "quantity": 300,
+        "price": 75.25,
+        "timestamp": "2024-08-20T08:00:00",
+        "charges": 15.00
+      }
+    ],
+    
+    "sequence_5": [
+      {
+        "security_id": 502,
+        "price": 82.50
+      }
+    ],
+    
+    "sequence_6": [
+      {
+        "user_id": 5001,
+        "security_id": 502,
+        "side": "SELL",
+        "quantity": 150,
+        "timestamp": "2024-10-01T09:00:00",
+        "charges": 7.50
+      }
+    ]
+  }
+}
