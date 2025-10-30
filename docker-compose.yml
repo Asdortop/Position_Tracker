@@ -23,6 +23,41 @@ services:
     networks:
       - position-tracker-network
 
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper
+    container_name: kafka-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - position-tracker-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka
+    container_name: kafka-broker
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9101:9101"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+    networks:
+      - position-tracker-network
+
   # Position Tracker API
   api:
     build: .
@@ -36,11 +71,16 @@ services:
       SECRET_KEY: "3jVOo-q9BIpNAr6tIDrDIhPD3bWsS8GDKDUoTw-VrIk"
       ALGORITHM: "HS256"
       ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
+      KAFKA_TRADES_TOPIC: "transactions.enriched"
+      KAFKA_CONSUMER_GROUP: "position-tracker-group"
     ports:
       - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_started
     volumes:
       - ./logs:/app/logs
     networks:

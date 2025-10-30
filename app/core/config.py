@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # Kafka settings
+    KAFKA_BOOTSTRAP_SERVERS: str = "kafka:29092"
+    KAFKA_TRADES_TOPIC: str = "transactions.enriched"
+    KAFKA_CONSUMER_GROUP: str = "position-tracker-group"
+
     class Config:
         env_file = ".env"
         env_file_encoding = 'utf-8'
